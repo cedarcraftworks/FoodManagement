@@ -1,0 +1,27 @@
+spring:
+  application:
+    name: food-management-api
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/food_management}
+    username: ${DATABASE_USER:food_management}
+    password: ${DATABASE_PASSWORD:food_management}
+  jackson:
+    default-property-inclusion: non_null
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+
+server:
+  port: ${PORT:8080}
+  error:
+    include-message: always
+
+food-management:
+  planner-url: ${PLANNER_URL:http://localhost:8000}
+  session-days: 7
+  # 期限の判断に使う「今日」のタイムゾーン
+  time-zone: Asia/Tokyo
+  allowed-origins: ${ALLOWED_ORIGINS:http://localhost:5173}

@@ -1,0 +1,98 @@
+{
+  "_comment": "配布提案と月次集計の共通テストケース。Python（planner）とTypeScript（web のデモ用）が同じ結果を返すことをこのファイルで確かめる。日付は today を基準にした固定の値。",
+  "status": [
+    { "name": "期限切れ", "expiresOn": "2026-10-31", "today": "2026-11-01", "expected": "expired" },
+    { "name": "今日が期限は3日以内", "expiresOn": "2026-11-01", "today": "2026-11-01", "expected": "within3" },
+    { "name": "3日後は3日以内", "expiresOn": "2026-11-04", "today": "2026-11-01", "expected": "within3" },
+    { "name": "4日後は7日以内", "expiresOn": "2026-11-05", "today": "2026-11-01", "expected": "within7" },
+    { "name": "7日後は7日以内", "expiresOn": "2026-11-08", "today": "2026-11-01", "expected": "within7" },
+    { "name": "8日後は余裕あり", "expiresOn": "2026-11-09", "today": "2026-11-01", "expected": "ok" }
+  ],
+  "plan": [
+    {
+      "name": "期限の早い在庫から割り当て、足りない種類を示す",
+      "today": "2026-11-01",
+      "households": 4,
+      "perHousehold": { "staple": 2, "canned": 1, "snack": 1 },
+      "includeExpiredBestBefore": false,
+      "lots": [
+        { "id": 1, "itemName": "パックごはん", "category": "staple", "quantity": 5, "expiresOn": "2026-12-01", "expiryType": "best_before", "receivedOn": "2026-10-01" },
+        { "id": 2, "itemName": "パックごはん", "category": "staple", "quantity": 4, "expiresOn": "2026-11-03", "expiryType": "best_before", "receivedOn": "2026-10-05" },
+        { "id": 3, "itemName": "サバ缶", "category": "canned", "quantity": 10, "expiresOn": "2027-05-01", "expiryType": "best_before", "receivedOn": "2026-09-01" },
+        { "id": 4, "itemName": "クッキー", "category": "snack", "quantity": 1, "expiresOn": "2026-10-30", "expiryType": "best_before", "receivedOn": "2026-09-20" },
+        { "id": 5, "itemName": "せんべい", "category": "snack", "quantity": 2, "expiresOn": "2026-11-10", "expiryType": "best_before", "receivedOn": "2026-10-10" },
+        { "id": 6, "itemName": "パン", "category": "staple", "quantity": 3, "expiresOn": "2026-10-31", "expiryType": "use_by", "receivedOn": "2026-10-29" },
+        { "id": 7, "itemName": "パスタ", "category": "staple", "quantity": 0, "expiresOn": "2026-11-02", "expiryType": "best_before", "receivedOn": "2026-10-01" }
+      ],
+      "expected": {
+        "picks": [
+          { "lotId": 2, "itemName": "パックごはん", "category": "staple", "quantity": 4, "expiresOn": "2026-11-03", "daysLeft": 2, "reason": "期限まで2日" },
+          { "lotId": 1, "itemName": "パックごはん", "category": "staple", "quantity": 4, "expiresOn": "2026-12-01", "daysLeft": 30, "reason": "期限まで30日" },
+          { "lotId": 3, "itemName": "サバ缶", "category": "canned", "quantity": 4, "expiresOn": "2027-05-01", "daysLeft": 181, "reason": "期限まで181日" },
+          { "lotId": 5, "itemName": "せんべい", "category": "snack", "quantity": 2, "expiresOn": "2026-11-10", "daysLeft": 9, "reason": "期限まで9日" }
+        ],
+        "shortages": [{ "category": "snack", "needed": 4, "available": 2, "short": 2 }]
+      }
+    },
+    {
+      "name": "団体の設定で賞味期限切れを含めても、消費期限切れは含めない",
+      "today": "2026-11-01",
+      "households": 3,
+      "perHousehold": { "snack": 1, "staple": 1 },
+      "includeExpiredBestBefore": true,
+      "lots": [
+        { "id": 4, "itemName": "クッキー", "category": "snack", "quantity": 1, "expiresOn": "2026-10-30", "expiryType": "best_before", "receivedOn": "2026-09-20" },
+        { "id": 5, "itemName": "せんべい", "category": "snack", "quantity": 2, "expiresOn": "2026-11-10", "expiryType": "best_before", "receivedOn": "2026-10-10" },
+        { "id": 6, "itemName": "パン", "category": "staple", "quantity": 3, "expiresOn": "2026-10-31", "expiryType": "use_by", "receivedOn": "2026-10-29" }
+      ],
+      "expected": {
+        "picks": [
+          { "lotId": 4, "itemName": "クッキー", "category": "snack", "quantity": 1, "expiresOn": "2026-10-30", "daysLeft": -2, "reason": "賞味期限を2日過ぎています（団体の設定で配布対象）" },
+          { "lotId": 5, "itemName": "せんべい", "category": "snack", "quantity": 2, "expiresOn": "2026-11-10", "daysLeft": 9, "reason": "期限まで9日" }
+        ],
+        "shortages": [{ "category": "staple", "needed": 3, "available": 0, "short": 3 }]
+      }
+    },
+    {
+      "name": "同じ期限なら先に入荷した在庫から。今日が期限の物も配れる",
+      "today": "2026-11-01",
+      "households": 2,
+      "perHousehold": { "drink": 1, "fresh": 0 },
+      "includeExpiredBestBefore": false,
+      "lots": [
+        { "id": 11, "itemName": "お茶", "category": "drink", "quantity": 5, "expiresOn": "2026-11-01", "expiryType": "best_before", "receivedOn": "2026-10-20" },
+        { "id": 10, "itemName": "麦茶", "category": "drink", "quantity": 1, "expiresOn": "2026-11-01", "expiryType": "best_before", "receivedOn": "2026-10-10" }
+      ],
+      "expected": {
+        "picks": [
+          { "lotId": 10, "itemName": "麦茶", "category": "drink", "quantity": 1, "expiresOn": "2026-11-01", "daysLeft": 0, "reason": "期限は今日です" },
+          { "lotId": 11, "itemName": "お茶", "category": "drink", "quantity": 1, "expiresOn": "2026-11-01", "daysLeft": 0, "reason": "期限は今日です" }
+        ],
+        "shortages": []
+      }
+    }
+  ],
+  "report": [
+    {
+      "name": "指定した月の受入・配布・廃棄を種類別に集計する",
+      "month": "2026-10",
+      "movements": [
+        { "kind": "receive", "category": "staple", "quantity": 20, "occurredOn": "2026-10-02" },
+        { "kind": "distribute", "category": "staple", "quantity": 12, "occurredOn": "2026-10-15" },
+        { "kind": "dispose", "category": "staple", "quantity": 1, "occurredOn": "2026-10-20" },
+        { "kind": "receive", "category": "canned", "quantity": 10, "occurredOn": "2026-10-03" },
+        { "kind": "distribute", "category": "canned", "quantity": 4, "occurredOn": "2026-10-31" },
+        { "kind": "receive", "category": "snack", "quantity": 5, "occurredOn": "2026-09-30" },
+        { "kind": "dispose", "category": "snack", "quantity": 2, "occurredOn": "2026-11-01" }
+      ],
+      "expected": {
+        "month": "2026-10",
+        "rows": [
+          { "category": "staple", "received": 20, "distributed": 12, "disposed": 1 },
+          { "category": "canned", "received": 10, "distributed": 4, "disposed": 0 }
+        ],
+        "total": { "received": 30, "distributed": 16, "disposed": 1 }
+      }
+    }
+  ]
+}

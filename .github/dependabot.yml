@@ -1,0 +1,15 @@
+# ライブラリの更新を毎週チェックし、更新があれば自動で PR を作る
+version: 2
+updates:
+  - package-ecosystem: maven
+    directory: /api
+    schedule: { interval: weekly }
+  - package-ecosystem: pip
+    directory: /planner
+    schedule: { interval: weekly }
+  - package-ecosystem: npm
+    directory: /web
+    schedule: { interval: weekly }
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly }
