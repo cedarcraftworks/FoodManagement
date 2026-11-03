@@ -466,6 +466,7 @@ button {
 }
 
 .notice {
+  display: block;
   background: var(--accent-soft);
   border-radius: 8px;
   padding: 8px 12px;

@@ -73,9 +73,9 @@ export function StockView({
         </div>
       </section>
       {message && (
-        <p className="notice" role="status">
+        <output className="notice">
           {message}
-        </p>
+        </output>
       )}
       <section className="card">
         <h2>在庫（期限が近い順）</h2>

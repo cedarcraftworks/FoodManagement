@@ -100,9 +100,9 @@ export function ReceiveView({ api, onSaved }: { api: Api; onSaved: () => Promise
         )}
       </div>
       {message && (
-        <p className="notice" role="status">
+        <output className="notice">
           {message}
-        </p>
+        </output>
       )}
       <div className="row">
         <label className="field">

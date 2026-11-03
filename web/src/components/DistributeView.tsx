@@ -77,9 +77,9 @@ export function DistributeView({ api, onChanged }: { api: Api; onChanged: () => 
       </section>
 
       {message && (
-        <p className="notice" role="status">
+        <output className="notice">
           {message}
-        </p>
+        </output>
       )}
       {error && <p className="error">{error}</p>}
 
