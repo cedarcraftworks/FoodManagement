@@ -1,15 +1,44 @@
-# ライブラリの更新を毎週チェックし、更新があれば自動で PR を作る
+# ライブラリの更新を月に1回チェックし、種類ごとに1つの PR にまとめて提案する。
+# 大きな変更（メジャーバージョンアップ）は動作が変わりやすいので、自動では提案しない。
 version: 2
 updates:
   - package-ecosystem: maven
     directory: /api
-    schedule: { interval: weekly }
+    schedule: { interval: monthly }
+    open-pull-requests-limit: 1
+    groups:
+      all:
+        patterns: ["*"]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: pip
     directory: /planner
-    schedule: { interval: weekly }
+    schedule: { interval: monthly }
+    open-pull-requests-limit: 1
+    groups:
+      all:
+        patterns: ["*"]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: npm
     directory: /web
-    schedule: { interval: weekly }
+    schedule: { interval: monthly }
+    open-pull-requests-limit: 1
+    groups:
+      all:
+        patterns: ["*"]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: github-actions
     directory: /
-    schedule: { interval: weekly }
+    schedule: { interval: monthly }
+    open-pull-requests-limit: 1
+    groups:
+      all:
+        patterns: ["*"]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]

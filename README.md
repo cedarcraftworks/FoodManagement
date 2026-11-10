@@ -44,13 +44,24 @@
 - **個人情報を持たない**：配布先の世帯は数だけを扱い、名前や住所は入力しません。
 - **同じ入力なら必ず同じ結果**：「今日」の日付を外から渡し、配布提案の規則は [共通テストケース](contract/cases.json) で固定しています。
 
+## 工夫したこと・難しかったこと
+
+| 課題 | どうしたか |
+| --- | --- |
+| 2人が同時に同じ在庫を減らすと数がずれる | 版番号（version）を使う楽観的ロックにした。「残りの数」ではなく「減らす数」と「見ていた version」を送り、1つの UPDATE 文で確かめる |
+| 配布は複数の在庫をまとめて減らすので、途中で失敗すると一部だけ減ってしまう | 1つのトランザクションにまとめ、1つでも失敗したら全部取り消す。テストで「ごはんは減らず、カレーだけ先に更新された」状況を再現して確かめた |
+| 「今日」がいつかで期限の判断が変わる | 日本時間の「今日」を1か所（`Clock`）で決め、計算には外から渡す。テストでは日付を固定して、いつ実行しても同じ結果にした |
+| 計算の規則を Python（本番）と TypeScript（デモ）の2か所に書く必要がある | 同じ JSON のテストケース（[contract/cases.json](contract/cases.json)）を両方のテストで読み、結果がずれたら CI で失敗するようにした |
+| バーコードの読み間違い・打ち間違い | JAN のチェックデジットを画面と API の両方で確かめ、間違った番号は登録しない |
+| 食品の安全 | 消費期限切れは設定に関係なく提案しない。「配ってよい」とは断定せず、期限の早い順の判断材料を出すだけにした |
+
 ## 構成
 
-```
-画面（TypeScript / React）──JSON──▶ API（Java / Spring Boot）──SQL──▶ PostgreSQL
-                                          │
-                                          ▼ 在庫と履歴を渡す
-                                計算（Python / FastAPI）
+```mermaid
+flowchart LR
+  web["画面<br/>TypeScript / React"] -- "JSON（Bearer トークン）" --> api["API<br/>Java / Spring Boot"]
+  api -- "SQL" --> db[("PostgreSQL")]
+  api -- "在庫と履歴を渡す" --> planner["計算<br/>Python / FastAPI"]
 ```
 
 | 部分 | 技術 | 役割 |
@@ -61,6 +72,40 @@
 | [contract/](contract) | JSON | Python と TypeScript が同じ結果を返すことを確かめる共通テストケース |
 
 **なぜ3つの言語に分けたか**：在庫の整合性とログイン・権限は堅さが大事なので Java、日付と数量の計算や集計は Python が書きやすく、画面は型で入力ミスを防げる TypeScript を選びました。配布提案の規則は Python と TypeScript の両方にあり、同じテストケースを両方で通すことで、2つがずれないようにしています。
+
+**データの関係**（同じ商品でも期限が違えば別の在庫として扱い、在庫を変えるたびに履歴を残す）
+
+```mermaid
+erDiagram
+  organizations ||--o{ users : "所属"
+  organizations ||--o{ items : "商品"
+  items ||--o{ lots : "期限ごとの在庫"
+  lots ||--o{ movements : "受入・配布・廃棄の履歴"
+  users ||--o{ movements : "操作した人"
+  users ||--o{ sessions : "ログイン中"
+```
+
+**配布を確定するときの流れ**（どれか1つでも先に更新されていたら全部取り消す）
+
+```mermaid
+sequenceDiagram
+  participant S as スタッフの画面
+  participant A as API（Java）
+  participant D as PostgreSQL
+  S->>A: 配布を確定（在庫ごとの個数と、見ていた version）
+  A->>D: BEGIN
+  loop 在庫ごと
+    A->>D: UPDATE … WHERE version = 見ていた値 AND 数量 >= 配る数
+    alt 更新できた
+      A->>D: 履歴を1行追加
+    else 0件（先に更新された・在庫不足）
+      A->>D: ROLLBACK
+      A-->>S: 409 Conflict → 最新の在庫で提案し直す
+    end
+  end
+  A->>D: COMMIT
+  A-->>S: 204 記録しました
+```
 
 API の仕様書は、起動後に `http://localhost:8080/swagger-ui.html` で見られます（OpenAPI から自動生成）。
 
@@ -95,6 +140,10 @@ cd web && npm install && API_URL=http://localhost:8080 npm run dev:api
 ## 注意
 
 デモの商品名・寄付元・団体名はすべて架空です。デモの JAN コードは店舗内で使う 20 番台の架空の番号です。期限の判断は最終的にスタッフが行ってください。
+
+## 開発について
+
+個人開発です。生成AI（Claude）を活用して開発しました。
 
 ## ライセンス
 
